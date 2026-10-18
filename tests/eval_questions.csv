@@ -1,0 +1,23 @@
+id,question,category,expected_intent,ground_truth_sql
+1,How many orders are there?,count,query,"SELECT COUNT(*) AS ORDER_COUNT FROM ORDERS"
+2,Total number of customers,count,query,"SELECT COUNT(*) AS CUSTOMER_COUNT FROM CUSTOMER"
+3,Which market segment has the most customers?,ranking,query,"SELECT C_MKTSEGMENT, COUNT(*) AS CUSTOMER_COUNT FROM CUSTOMER GROUP BY C_MKTSEGMENT ORDER BY CUSTOMER_COUNT DESC LIMIT 1"
+4,Total sales by region,multi_join,query,"SELECT REGION.R_NAME, SUM(ORDERS.O_TOTALPRICE) AS TOTAL_SALES FROM ORDERS JOIN CUSTOMER ON ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY JOIN NATION ON CUSTOMER.C_NATIONKEY = NATION.N_NATIONKEY JOIN REGION ON NATION.N_REGIONKEY = REGION.R_REGIONKEY GROUP BY REGION.R_NAME ORDER BY TOTAL_SALES DESC"
+5,What is the average account balance of customers?,average,query,"SELECT AVG(C_ACCTBAL) AS AVG_BALANCE FROM CUSTOMER"
+6,How many customers are in the AUTOMOBILE market segment?,filter,query,"SELECT COUNT(*) AS CNT FROM CUSTOMER WHERE C_MKTSEGMENT = 'AUTOMOBILE'"
+7,What is the total quantity of line items ordered?,sum,query,"SELECT SUM(L_QUANTITY) AS TOTAL_QTY FROM LINEITEM"
+8,How many urgent orders were placed?,filter,query,"SELECT COUNT(*) AS URGENT_COUNT FROM ORDERS WHERE O_ORDERPRIORITY = '1-URGENT'"
+9,Total sales revenue for fulfilled orders,filter,query,"SELECT SUM(O_TOTALPRICE) AS TOTAL_REVENUE FROM ORDERS WHERE O_ORDERSTATUS = 'F'"
+10,Customer count by nation,2_table_join,query,"SELECT NATION.N_NAME, COUNT(CUSTOMER.C_CUSTKEY) AS CUSTOMER_COUNT FROM CUSTOMER JOIN NATION ON CUSTOMER.C_NATIONKEY = NATION.N_NATIONKEY GROUP BY NATION.N_NAME ORDER BY CUSTOMER_COUNT DESC"
+11,Average order total price by order priority,grouped_avg,query,"SELECT O_ORDERPRIORITY, AVG(O_TOTALPRICE) AS AVG_PRICE FROM ORDERS GROUP BY O_ORDERPRIORITY ORDER BY AVG_PRICE DESC"
+12,What are the top 5 largest orders by total price?,ranking,query,"SELECT O_ORDERKEY, O_TOTALPRICE FROM ORDERS ORDER BY O_TOTALPRICE DESC LIMIT 5"
+13,Count of lineitems shipped via AIR,filter,query,"SELECT COUNT(*) AS AIR_ITEMS FROM LINEITEM WHERE L_SHIPMODE = 'AIR'"
+14,Show orders with total price greater than 300000,comparison,query,"SELECT COUNT(*) AS EXPENSIVE_ORDERS FROM ORDERS WHERE O_TOTALPRICE > 300000"
+15,Orders placed by customers in GERMANY,3_table_join,query,"SELECT COUNT(*) AS GERMAN_ORDERS FROM ORDERS JOIN CUSTOMER ON ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY JOIN NATION ON CUSTOMER.C_NATIONKEY = NATION.N_NATIONKEY WHERE NATION.N_NAME = 'GERMANY'"
+16,how many costomers in market segment machinery,typo,query,"SELECT COUNT(*) AS CNT FROM CUSTOMER WHERE C_MKTSEGMENT = 'MACHINERY'"
+17,total revnue by nation,typo_join,query,"SELECT NATION.N_NAME, SUM(ORDERS.O_TOTALPRICE) AS TOTAL_REVENUE FROM ORDERS JOIN CUSTOMER ON ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY JOIN NATION ON CUSTOMER.C_NATIONKEY = NATION.N_NATIONKEY GROUP BY NATION.N_NAME ORDER BY TOTAL_REVENUE DESC"
+18,Show the best region,ambiguous,clarify,CLARIFY
+19,Predict next year's sales,forecasting,unsupported,UNSUPPORTED
+20,What is the bitcoin price in 2026?,out_of_scope,unsupported,UNSUPPORTED
+21,What is the employee salary of customer clerk?,missing_column,unsupported,UNSUPPORTED
+22,How many orders were placed by customers in a nation that does not exist like Atlantis?,zero_result,query,"SELECT COUNT(*) AS CNT FROM ORDERS JOIN CUSTOMER ON ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY JOIN NATION ON CUSTOMER.C_NATIONKEY = NATION.N_NATIONKEY WHERE NATION.N_NAME = 'ATLANTIS'"

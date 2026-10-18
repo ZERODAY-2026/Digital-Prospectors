@@ -1,1 +1,0 @@
-# DataMind test suite

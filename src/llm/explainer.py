@@ -1,9 +1,18 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import ollama
 from src.config import OllamaConfig, load_app_config
 from src.core.plan_schema import Plan
 from src.db.snowflake_client import ResultObject
 from src.llm.prompts import EXPLAINER_SYSTEM_PROMPT_TEMPLATE
+
+def _extract_numbers_from_text(text: str) -> List[float]:
+    from src.core.guard import extract_numbers
+    return [num for _, num in extract_numbers(text)]
+
+def _collect_numbers_from_rows(rows: List[Dict[str, Any]], row_count: int) -> Set[float]:
+    from src.core.guard import collect_row_values
+    valid_nums, _ = collect_row_values(rows, row_count)
+    return valid_nums
 
 def build_template_explanation(question: str, plan: Plan, result: ResultObject) -> str:
     """Deterministic fallback explanation that strictly relies on real data without hallucination."""

@@ -5,13 +5,14 @@ from src.core.plan_schema import Plan
 from src.core.validator import validate_plan, ValidationResult
 from src.core.sql_builder import build_sql
 from src.core.evidence import EvidenceBundle, build_evidence
+from src.core.guard import check_hallucination, GuardResult
 from src.db.snowflake_client import SnowflakeClient, ResultObject
 from src.llm.planner import generate_plan
-from src.llm.explainer import explain_result
+from src.llm.explainer import explain_result, build_template_explanation
 
 @dataclass
 class PipelineResult:
-    status: str  # "ok", "empty", "clarify", "unsupported", "validation_error", "db_error", "llm_error"
+    status: str  # "ok", "empty", "clarify", "unsupported", "validation_error", "db_error", "llm_error", "hallucination_blocked"
     question: str
     plan: Optional[Plan] = None
     result: Optional[ResultObject] = None
@@ -40,7 +41,7 @@ class DataMindPipeline:
             return PipelineResult(
                 status="clarify",
                 question=question,
-                message="Please ask a question about the sales, orders, or customers dataset.",
+                message="Please ask an organizational question about customer, sales, orders, or logistics data.",
                 explanation="Please provide a query."
             )
 
@@ -78,7 +79,7 @@ class DataMindPipeline:
             )
 
         if plan.intent == "unsupported":
-            msg = plan.message or "This request asks for data or forecasting capabilities outside this analytical dataset."
+            msg = plan.message or "This business agent only handles organizational data queries."
             evidence = build_evidence(plan=plan, result=None, model_name=self.app_cfg.ollama.model)
             return PipelineResult(
                 status="unsupported",
@@ -135,12 +136,10 @@ class DataMindPipeline:
                 message=db_res.error
             )
 
-        # 6. Build Evidence Bundle
-        evidence = build_evidence(plan=validated_plan, result=db_res, model_name=self.app_cfg.ollama.model)
-
-        # 7. Check for Empty Result
+        # 6. Check for Empty Result
         if db_res.status == "empty" or db_res.row_count == 0:
-            msg = f"The query returned no matching rows in the dataset."
+            evidence = build_evidence(plan=validated_plan, result=db_res, model_name=self.app_cfg.ollama.model)
+            msg = "The query returned no matching rows in the dataset."
             return PipelineResult(
                 status="empty",
                 question=question,
@@ -151,18 +150,45 @@ class DataMindPipeline:
                 message=msg
             )
 
-        # 8. Gemma Explainer
+        # 7. Gemma Explainer
         try:
-            explanation = self.explainer_fn(
+            raw_explanation = self.explainer_fn(
                 question=question,
                 plan=validated_plan,
                 result=db_res,
                 ollama_cfg=self.app_cfg.ollama
             )
-        except Exception as e:
-            # Fall back cleanly without crashing
-            from src.llm.explainer import build_template_explanation
-            explanation = build_template_explanation(question, validated_plan, db_res)
+        except Exception:
+            raw_explanation = build_template_explanation(question, validated_plan, db_res)
+
+        # 8. Hallucination Guard Check
+        guard_res: GuardResult = check_hallucination(
+            explanation=raw_explanation,
+            rows=db_res.rows,
+            plan=validated_plan,
+            sql=sql,
+            params=params,
+            strict_mode=self.app_cfg.strict_mode,
+            template_fallback_fn=lambda: build_template_explanation(question, validated_plan, db_res)
+        )
+
+        evidence = build_evidence(
+            plan=validated_plan,
+            result=db_res,
+            model_name=self.app_cfg.ollama.model,
+            guard=guard_res.guard_report
+        )
+
+        if guard_res.is_blocked:
+            return PipelineResult(
+                status="hallucination_blocked",
+                question=question,
+                plan=validated_plan,
+                result=db_res,
+                evidence=evidence,
+                explanation=guard_res.explanation,
+                message="Output blocked due to hallucination in strict mode."
+            )
 
         return PipelineResult(
             status="ok",
@@ -170,6 +196,6 @@ class DataMindPipeline:
             plan=validated_plan,
             result=db_res,
             evidence=evidence,
-            explanation=explanation,
+            explanation=guard_res.explanation,
             message=None
         )

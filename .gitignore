@@ -16,6 +16,8 @@ __pycache__/
 # Hackathon / Evaluation results
 results/
 *.pdf
+docs/reference/
+*.pyc
 
 # Operating system files
 .DS_Store

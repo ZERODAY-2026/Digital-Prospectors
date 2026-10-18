@@ -11,9 +11,9 @@
 
 | Name | GitHub Handle | Role |
 | :--- | :--- | :--- |
-| Member 1 (Lead / Full Stack) | @github_handle_1 | Architecture, Gemma Planner & Pipeline |
-| Member 2 (Data / Backend) | @github_handle_2 | Snowflake Schema, Validator & SQL Builder |
-| Member 3 (UI / Evaluation) | @github_handle_3 | Streamlit Frontend, Eval Suite & Docs |
+| Member 1 (Lead / Full Stack) | @sukanyakharate398-star | Architecture, Gemma Planner & Pipeline |
+| Member 2 (Data / Backend) | @chinmayee123456 | Snowflake Schema, Validator & SQL Builder |
+| Member 3 (UI / Evaluation) | @sharonsamuelhalli | Streamlit Frontend, Eval Suite & Docs |
 
 ---
 

@@ -68,7 +68,7 @@ flowchart TD
 ## 5. Tech Stack & Tested Environment
 
 * **Operating System**: Windows 11 (PowerShell)
-* **Python**: 3.12 (Virtual environment)
+* **Python**: 3.13 (Virtual environment)
 * **LLM Engine**: Ollama running locally (CPU inference)
 * **Model Tag**: `gemma3n:e2b` (configured via `OLLAMA_MODEL`)
 * **Hardware**: 8 GB RAM, CPU-only inference

@@ -4,74 +4,7 @@ from typing import Dict, Any, List, Optional, Set
 import ollama
 from src.config import OllamaConfig, load_app_config, load_dataset_config
 from src.core.plan_schema import Plan, PLAN_JSON_SCHEMA
-
-FEW_SHOT_EXAMPLES = [
-    {
-        "question": "How many orders are there?",
-        "plan": {
-            "intent": "query",
-            "tables": ["ORDERS"],
-            "metrics": [{"agg": "count", "col": "O_ORDERKEY", "as": "order_count"}],
-            "dims": [],
-            "filters": [],
-            "order_by": [],
-            "limit": 100,
-            "message": None
-        }
-    },
-    {
-        "question": "Which market segment has the most customers?",
-        "plan": {
-            "intent": "query",
-            "tables": ["CUSTOMER"],
-            "metrics": [{"agg": "count", "col": "C_CUSTKEY", "as": "customer_count"}],
-            "dims": [{"col": "C_MKTSEGMENT", "fn": None}],
-            "filters": [],
-            "order_by": [{"key": "customer_count", "dir": "desc"}],
-            "limit": 100,
-            "message": None
-        }
-    },
-    {
-        "question": "Total sales by region",
-        "plan": {
-            "intent": "query",
-            "tables": ["ORDERS", "CUSTOMER", "NATION", "REGION"],
-            "metrics": [{"agg": "sum", "col": "O_TOTALPRICE", "as": "total_sales"}],
-            "dims": [{"col": "R_NAME", "fn": None}],
-            "filters": [],
-            "order_by": [{"key": "total_sales", "dir": "desc"}],
-            "limit": 100,
-            "message": None
-        }
-    },
-    {
-        "question": "Show the best region",
-        "plan": {
-            "intent": "clarify",
-            "tables": [],
-            "metrics": [],
-            "dims": [],
-            "filters": [],
-            "order_by": [],
-            "limit": None,
-            "message": "Please clarify what metric defines 'best' (e.g., total sales revenue or order volume)."
-        }
-    },
-    {
-        "question": "Predict next year's sales",
-        "plan": {
-            "intent": "unsupported",
-            "tables": [],
-            "metrics": [],
-            "dims": [],
-            "filters": [],
-            "order_by": [],
-            "limit": None,
-            "message": "Predictive modeling and future forecasting are not supported by this analytical dataset."
-        }
-    }
-]
+from src.llm.prompts import PLANNER_SYSTEM_PROMPT_TEMPLATE, format_few_shot_examples
 
 def preselect_tables(question: str, dataset_cfg: Dict[str, Any]) -> List[str]:
     """Pre-select candidate tables based on keyword and synonym matches in question."""
@@ -102,7 +35,7 @@ def preselect_tables(question: str, dataset_cfg: Dict[str, Any]) -> List[str]:
     return sorted(list(matched_tables))
 
 def build_prompt(question: str, dataset_cfg: Dict[str, Any], candidate_tables: List[str]) -> str:
-    """Build a compact schema prompt with few-shot examples for Gemma."""
+    """Build a compact schema prompt with few-shot examples for Gemma using prompts template."""
     schema_lines = []
     for tbl_name in candidate_tables:
         tbl_info = dataset_cfg.get("tables", {}).get(tbl_name, {})
@@ -112,24 +45,13 @@ def build_prompt(question: str, dataset_cfg: Dict[str, Any], candidate_tables: L
         schema_lines.append(f"TABLE {tbl_name}: {', '.join(cols)}")
 
     schema_text = "\n".join(schema_lines)
+    examples_text = format_few_shot_examples()
 
-    examples_text = ""
-    for ex in FEW_SHOT_EXAMPLES:
-        examples_text += f"\nUser: {ex['question']}\nPlan: {json.dumps(ex['plan'])}\n"
-
-    prompt = f"""You are DataMind, an AI analytical planner. Given a user question, return ONLY a JSON plan following the JSON schema.
-- intent="query": factual data present in dataset.
-- intent="clarify": ambiguous terms without explicit measure (e.g. "top", "best").
-- intent="unsupported": forecasting, future predictions, or topics outside the dataset.
-
-Available Schema:
-{schema_text}
-
-Examples:
-{examples_text}
-
-User Question: {question}
-Plan:"""
+    prompt = PLANNER_SYSTEM_PROMPT_TEMPLATE.format(
+        schema=schema_text,
+        examples=examples_text,
+        question=question
+    )
     return prompt
 
 def generate_plan(
@@ -144,21 +66,40 @@ def generate_plan(
         app_cfg = load_app_config()
         ollama_cfg = app_cfg.ollama
 
-    # Check for direct unsupported concepts early
-    q_lower = question.lower()
-    unsupported_terms = ["predict", "forecast", "future", "next year's sales", "weather", "crypto", "stock price"]
-    if any(t in q_lower for t in unsupported_terms):
-        return Plan(
-            intent="unsupported",
-            message="Predictive forecasting and future modeling are outside the scope of this historical analytical dataset."
-        )
+    scope_msgs = dataset_cfg.get("scope_messages", {})
+    unsupported_msg = scope_msgs.get("unsupported_message", "This business agent only handles organizational data queries.")
+    missing_data_msg = scope_msgs.get("missing_data_message", "This dataset contains customer, orders, line item, nation, and region data. It does not contain employee, inventory, payroll, or HR data.")
 
-    # Check for clarify terms lacking metrics
-    clarify_terms = ["best region", "best customer", "top nation", "top customer", "best product"]
-    if any(t in q_lower for t in clarify_terms) and not any(m in q_lower for m in ["sales", "revenue", "order", "price", "count", "quantity", "balance"]):
+    q_lower = question.lower()
+
+    # 1. Check for non-business / out-of-scope queries (homework, personal, recipes, weather, crypto, etc.)
+    non_business_terms = [
+        "homework", "chemistry", "physics", "math", "biology", "poem", "joke", "recipe",
+        "weather", "crypto", "bitcoin", "stock price", "sports", "football", "movie",
+        "illegal", "hack", "personal", "who are you", "what is your name", "tell me a story"
+    ]
+    if any(re.search(r"\b" + re.escape(t) + r"\b", q_lower) for t in non_business_terms):
+        return Plan(intent="unsupported", message=unsupported_msg)
+
+    # 2. Check for predictive / forecasting questions
+    forecast_terms = ["predict", "forecast", "future", "next year's sales", "projection", "estimate for next year"]
+    if any(t in q_lower for t in forecast_terms):
+        return Plan(intent="unsupported", message="Predictive forecasting and future modeling are outside the scope of this historical analytical dataset.")
+
+    # 3. Check for business-related data missing from the schema (employees, payroll, inventory, HR, etc.)
+    missing_data_terms = [
+        "employee", "employees", "staff", "worker", "workers", "salary", "salaries", "payroll",
+        "hr", "human resources", "inventory", "stock level", "warehouse inventory", "job title"
+    ]
+    if any(re.search(r"\b" + re.escape(t) + r"\b", q_lower) for t in missing_data_terms):
+        return Plan(intent="unsupported", message=missing_data_msg)
+
+    # 4. Check for clarify terms lacking metrics (e.g. "best", "top" with no metric)
+    clarify_terms = ["best region", "best customer", "top nation", "top customer", "best product", "best segment"]
+    if any(t in q_lower for t in clarify_terms) and not any(m in q_lower for m in ["sales", "revenue", "order", "price", "count", "quantity", "balance", "volume"]):
         return Plan(
             intent="clarify",
-            message="Please clarify the metric to rank by (e.g., total sales revenue, order volume, or average order value)."
+            message="Please clarify what metric defines 'best' (e.g., total sales revenue or order volume)."
         )
 
     candidate_tables = preselect_tables(question, dataset_cfg)
@@ -186,7 +127,11 @@ def generate_plan(
                 raw_text = re.sub(r"\s*```$", "", raw_text)
 
             parsed = json.loads(raw_text)
-            return Plan.from_dict(parsed)
+            plan = Plan.from_dict(parsed)
+            # If model returned unsupported but no message, use the standard unsupported_msg
+            if plan.intent == "unsupported" and not plan.message:
+                plan.message = unsupported_msg
+            return plan
 
         except Exception as e:
             if attempt == 1:

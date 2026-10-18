@@ -3,6 +3,10 @@ description: "TPC-H Benchmark Dataset for sales, orders, customers, and regional
 default_limit: 100
 max_limit: 1000
 
+scope_messages:
+  unsupported_message: "This business agent only handles organizational data queries."
+  missing_data_message: "This dataset contains customer, orders, line item, nation, and region data. It does not contain employee, inventory, payroll, or HR data."
+
 allowed_aggregates:
   integer:
     - count

@@ -24,6 +24,7 @@ class AppConfig:
     snowflake: SnowflakeConfig
     ollama: OllamaConfig
     dataset_config_path: str
+    strict_mode: bool = False
 
 def load_app_config(env_path: Optional[str] = None) -> AppConfig:
     """Load application configuration from environment variables and .env file."""
@@ -48,11 +49,14 @@ def load_app_config(env_path: Optional[str] = None) -> AppConfig:
     )
 
     dataset_path = os.getenv("DATASET_CONFIG", "config/datasets/tpch.yaml")
+    strict_mode_env = os.getenv("STRICT_MODE", "false").strip().lower()
+    strict_mode = strict_mode_env in ("true", "1", "yes")
 
     return AppConfig(
         snowflake=snowflake_cfg,
         ollama=ollama_cfg,
         dataset_config_path=dataset_path,
+        strict_mode=strict_mode,
     )
 
 def load_dataset_config(config_path: Optional[str] = None) -> Dict[str, Any]:

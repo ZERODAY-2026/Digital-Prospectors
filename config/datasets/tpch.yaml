@@ -1,0 +1,297 @@
+name: tpch
+description: "TPC-H Benchmark Dataset for sales, orders, customers, and regional analytics"
+default_limit: 100
+max_limit: 1000
+
+allowed_aggregates:
+  integer:
+    - count
+    - sum
+    - avg
+    - min
+    - max
+  decimal:
+    - count
+    - sum
+    - avg
+    - min
+    - max
+  string:
+    - count
+    - min
+    - max
+  date:
+    - count
+    - min
+    - max
+  id:
+    - count
+
+tables:
+  CUSTOMER:
+    description: "Customer records including account balance and market segment"
+    synonyms:
+      - customers
+      - clients
+      - buyers
+      - accounts
+    columns:
+      C_CUSTKEY:
+        type: integer
+        role: id
+        description: "Unique identifier for customer"
+        synonyms: ["customer id", "cust id", "client id", "customer key"]
+      C_NAME:
+        type: string
+        role: dimension
+        description: "Customer name"
+        synonyms: ["customer name", "client name", "customer"]
+      C_ADDRESS:
+        type: string
+        role: dimension
+        description: "Customer physical address"
+        synonyms: ["address", "location"]
+      C_NATIONKEY:
+        type: integer
+        role: id
+        description: "Foreign key to nation table"
+        synonyms: ["nation key", "country key"]
+      C_PHONE:
+        type: string
+        role: dimension
+        description: "Customer contact phone number"
+        synonyms: ["phone", "telephone", "phone number"]
+      C_ACCTBAL:
+        type: decimal
+        role: measure
+        description: "Customer account balance"
+        synonyms: ["account balance", "balance", "funds", "credit"]
+      C_MKTSEGMENT:
+        type: string
+        role: dimension
+        description: "Customer market segment (e.g. BUILDING, AUTOMOBILE, MACHINERY, HOUSEHOLD, FURNITURE)"
+        synonyms: ["market segment", "segment", "industry", "sector"]
+      C_COMMENT:
+        type: string
+        role: dimension
+        description: "Customer notes or remarks"
+        synonyms: ["comment", "notes"]
+
+  ORDERS:
+    description: "Sales orders placed by customers"
+    synonyms:
+      - orders
+      - purchases
+      - transactions
+      - sales orders
+    columns:
+      O_ORDERKEY:
+        type: integer
+        role: id
+        description: "Unique identifier for order"
+        synonyms: ["order id", "order key", "order number", "order"]
+      O_CUSTKEY:
+        type: integer
+        role: id
+        description: "Foreign key to customer who placed order"
+        synonyms: ["customer id", "customer key"]
+      O_ORDERSTATUS:
+        type: string
+        role: dimension
+        description: "Order fulfillment status (O=Open, F=Fulfilled, P=Pending)"
+        synonyms: ["status", "order status", "state"]
+      O_TOTALPRICE:
+        type: decimal
+        role: measure
+        description: "Total monetary amount for order"
+        synonyms: ["total price", "total amount", "sales", "revenue", "order value", "amount", "price"]
+      O_ORDERDATE:
+        type: date
+        role: date
+        description: "Date the order was placed"
+        synonyms: ["order date", "date placed", "date", "purchase date"]
+      O_ORDERPRIORITY:
+        type: string
+        role: dimension
+        description: "Order priority level (e.g. 1-URGENT, 2-HIGH, 3-MEDIUM, 4-NOT SPECIFIED, 5-LOW)"
+        synonyms: ["priority", "order priority", "urgency"]
+      O_CLERK:
+        type: string
+        role: dimension
+        description: "Clerk who registered order"
+        synonyms: ["clerk", "sales rep", "agent"]
+      O_SHIPPRIORITY:
+        type: integer
+        role: dimension
+        description: "Numeric shipping priority code"
+        synonyms: ["ship priority", "shipping priority"]
+      O_COMMENT:
+        type: string
+        role: dimension
+        description: "Order remarks"
+        synonyms: ["comment", "notes"]
+
+  LINEITEM:
+    description: "Line item detail records for each order"
+    synonyms:
+      - lineitem
+      - line items
+      - order items
+      - items
+      - products ordered
+    columns:
+      L_ORDERKEY:
+        type: integer
+        role: id
+        description: "Foreign key to orders table"
+        synonyms: ["order key", "order id"]
+      L_PARTKEY:
+        type: integer
+        role: id
+        description: "Part / product key"
+        synonyms: ["part key", "part id", "product id"]
+      L_SUPPKEY:
+        type: integer
+        role: id
+        description: "Supplier key"
+        synonyms: ["supplier key", "supplier id", "vendor id"]
+      L_LINENUMBER:
+        type: integer
+        role: dimension
+        description: "Sequential line number within the order"
+        synonyms: ["line number", "item number"]
+      L_QUANTITY:
+        type: decimal
+        role: measure
+        description: "Quantity of items ordered"
+        synonyms: ["quantity", "qty", "volume", "units"]
+      L_EXTENDEDPRICE:
+        type: decimal
+        role: measure
+        description: "Extended line item price (quantity * unit price)"
+        synonyms: ["extended price", "item price", "line total"]
+      L_DISCOUNT:
+        type: decimal
+        role: measure
+        description: "Discount percentage applied"
+        synonyms: ["discount", "rebate"]
+      L_TAX:
+        type: decimal
+        role: measure
+        description: "Tax rate applied"
+        synonyms: ["tax", "tax rate"]
+      L_RETURNFLAG:
+        type: string
+        role: dimension
+        description: "Return status flag (R=Returned, A=Accepted, N=Normal)"
+        synonyms: ["return flag", "return status"]
+      L_LINESTATUS:
+        type: string
+        role: dimension
+        description: "Line item fulfillment status (O=Open, F=Fulfilled)"
+        synonyms: ["line status", "item status"]
+      L_SHIPDATE:
+        type: date
+        role: date
+        description: "Date line item was shipped"
+        synonyms: ["ship date", "shipping date"]
+      L_COMMITDATE:
+        type: date
+        role: date
+        description: "Committed delivery date"
+        synonyms: ["commit date", "commitment date"]
+      L_RECEIPTDATE:
+        type: date
+        role: date
+        description: "Date line item was received by customer"
+        synonyms: ["receipt date", "delivery date"]
+      L_SHIPINSTRUCT:
+        type: string
+        role: dimension
+        description: "Instructions for shipping"
+        synonyms: ["shipping instructions", "delivery instructions"]
+      L_SHIPMODE:
+        type: string
+        role: dimension
+        description: "Shipping transportation mode (e.g. AIR, SHIP, TRUCK, MAIL, REG AIR, FOB, RAIL)"
+        synonyms: ["ship mode", "shipping mode", "carrier", "transport mode"]
+      L_COMMENT:
+        type: string
+        role: dimension
+        description: "Line item comments"
+        synonyms: ["comment", "notes"]
+
+  NATION:
+    description: "Countries and nations where customers are located"
+    synonyms:
+      - nation
+      - nations
+      - country
+      - countries
+    columns:
+      N_NATIONKEY:
+        type: integer
+        role: id
+        description: "Unique nation identifier"
+        synonyms: ["nation key", "nation id", "country id"]
+      N_NAME:
+        type: string
+        role: dimension
+        description: "Nation or country name (e.g. UNITED STATES, CHINA, GERMANY, BRAZIL)"
+        synonyms: ["nation name", "country name", "nation", "country"]
+      N_REGIONKEY:
+        type: integer
+        role: id
+        description: "Foreign key to region table"
+        synonyms: ["region key", "region id"]
+      N_COMMENT:
+        type: string
+        role: dimension
+        description: "Nation comments"
+        synonyms: ["comment", "notes"]
+
+  REGION:
+    description: "Geographical continents / regions"
+    synonyms:
+      - region
+      - regions
+      - continent
+      - continents
+    columns:
+      R_REGIONKEY:
+        type: integer
+        role: id
+        description: "Unique region identifier"
+        synonyms: ["region key", "region id"]
+      R_NAME:
+        type: string
+        role: dimension
+        description: "Region name (e.g. AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)"
+        synonyms: ["region name", "region", "continent"]
+      R_COMMENT:
+        type: string
+        role: dimension
+        description: "Region comments"
+        synonyms: ["comment", "notes"]
+
+joins:
+  - name: ORDERS_CUSTOMER
+    from_table: ORDERS
+    from_column: O_CUSTKEY
+    to_table: CUSTOMER
+    to_column: C_CUSTKEY
+  - name: CUSTOMER_NATION
+    from_table: CUSTOMER
+    from_column: C_NATIONKEY
+    to_table: NATION
+    to_column: N_NATIONKEY
+  - name: NATION_REGION
+    from_table: NATION
+    from_column: N_REGIONKEY
+    to_table: REGION
+    to_column: R_REGIONKEY
+  - name: LINEITEM_ORDERS
+    from_table: LINEITEM
+    from_column: L_ORDERKEY
+    to_table: ORDERS
+    to_column: O_ORDERKEY
